@@ -18,6 +18,7 @@ h1{font-size:22px;text-align:center;margin:4px 0 2px;letter-spacing:1px}
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
 .t{min-height:62px;border:2px solid var(--empty);border-radius:6px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;font-weight:600;padding:4px;line-height:1.15;color:var(--fg);background:transparent;font-family:inherit}
 .t.cur{border-color:var(--tile)}
+.t.m{background:#2764a5;border-color:#2764a5;color:#fff}
 .t.g{background:var(--g);border-color:var(--g);color:#fff}
 .t.y{background:var(--y);border-color:var(--y);color:#fff}
 .t.x{background:var(--x);border-color:var(--x);color:#fff}
@@ -40,13 +41,13 @@ button.b.alt{background:var(--empty);color:var(--fg)}
 <body>
 <main>
 <h1>Filmle</h1>
-<div class="sub">Pick a movie your actor is in, then an actor from that movie, and keep going until you reach the finish. 10 guesses.</div>
+<div class="sub">Each turn, pick a movie your actor is in, then an actor from that movie. Reach the finish in 6 turns.</div>
 <div class="end" id="A"></div>
 <div id="rows"></div>
 <div class="end" id="B"></div>
 <div id="msg"></div>
 <div class="btns"><button class="b alt" id="new">New puzzle</button></div>
-<div class="key"><b>Movie</b><br>🟩 someone in it is closer to the finish<br>🟨 your actor is in it, but nobody in it is closer!</br>⬛ your actor isn’t in it (try again)<br><b>Actor</b><br>🟩 closer to the finish than the last actor<br>🟨 in that movie, but no closer<br>⬛ not in that movie (try again)<br><i>Tap a coloured tile to see why.</i></div>
+<div class="key"><b>Movie</b><br>🟦 a neutral link in your chain<br><b>Actor</b><br>🟩 in the movie and closer to the finish<br>🟨 in the movie, but not closer<br><i>Explanations appear under each tile. A movie and actor together count as one turn. If the movie includes the finish actor, you connect automatically.</i></div>
 <div class="btns" id="shareWrap" style="display:none"><button class="b alt" id="share">Copy result</button></div>
 </main>
 <div id="sheet"><div id="box"><input id="q" placeholder="Search…" autocomplete="off"><div id="list"></div></div></div>
@@ -89,31 +90,163 @@ Dune|Timothée Chalamet,Zendaya,Oscar Isaac,Rebecca Ferguson
 Spider-Man: No Way Home|Tom Holland,Zendaya,Benedict Cumberbatch
 The Social Network|Jesse Eisenberg,Andrew Garfield,Justin Timberlake
 Zombieland|Jesse Eisenberg,Emma Stone,Woody Harrelson`;
+// A larger hand-curated starter cast graph. Keep this local until a movie-data API is added.
+const EXTRA=`The Shawshank Redemption|Tim Robbins,Morgan Freeman,Bob Gunton
+The Godfather|Marlon Brando,Al Pacino,James Caan,Robert Duvall
+The Godfather Part II|Al Pacino,Robert Duvall,Robert De Niro
+Goodfellas|Robert De Niro,Ray Liotta,Joe Pesci
+The Departed|Leonardo DiCaprio,Matt Damon,Jack Nicholson,Mark Wahlberg
+The Irishman|Robert De Niro,Al Pacino,Joe Pesci
+Taxi Driver|Robert De Niro,Jodie Foster,Harvey Keitel
+Raging Bull|Robert De Niro,Joe Pesci,Cathy Moriarty
+Heat|Al Pacino,Robert De Niro,Val Kilmer
+The Silence of the Lambs|Jodie Foster,Anthony Hopkins,Scott Glenn
+Gladiator|Russell Crowe,Joaquin Phoenix,Connie Nielsen
+A Beautiful Mind|Russell Crowe,Jennifer Connelly,Ed Harris
+Les Misérables|Hugh Jackman,Russell Crowe,Anne Hathaway
+The Prestige|Hugh Jackman,Christian Bale,Michael Caine,Scarlett Johansson
+The Fighter|Christian Bale,Mark Wahlberg,Amy Adams
+American Hustle|Christian Bale,Amy Adams,Bradley Cooper,Jennifer Lawrence
+Silver Linings Playbook|Bradley Cooper,Jennifer Lawrence,Robert De Niro
+American Sniper|Bradley Cooper,Sienna Miller
+Guardians of the Galaxy|Chris Pratt,Zoe Saldana,Bradley Cooper,Vin Diesel
+Jurassic World|Chris Pratt,Bryce Dallas Howard
+Passengers|Chris Pratt,Jennifer Lawrence,Michael Sheen
+The Hunger Games|Jennifer Lawrence,Josh Hutcherson,Woody Harrelson
+X-Men: First Class|Jennifer Lawrence,James McAvoy,Michael Fassbender
+Knives Out|Daniel Craig,Chris Evans,Ana de Armas,Jamie Lee Curtis
+Glass Onion|Daniel Craig,Edward Norton,Janelle Monáe
+The Grand Budapest Hotel|Ralph Fiennes,Tony Revolori,Saoirse Ronan,Edward Norton
+The King's Speech|Colin Firth,Geoffrey Rush,Helena Bonham Carter
+Bridget Jones's Diary|Renée Zellweger,Colin Firth,Hugh Grant
+Love Actually|Hugh Grant,Colin Firth,Emma Thompson,Keira Knightley
+Pride & Prejudice|Keira Knightley,Matthew Macfadyen,Rosamund Pike
+Atonement|Keira Knightley,James McAvoy,Saoirse Ronan
+Brooklyn|Saoirse Ronan,Emory Cohen,Domhnall Gleeson
+Lady Bird|Saoirse Ronan,Laurie Metcalf,Timothée Chalamet
+Call Me by Your Name|Timothée Chalamet,Armie Hammer,Michael Stuhlbarg
+Wonka|Timothée Chalamet,Hugh Grant,Olivia Colman
+The Favourite|Olivia Colman,Emma Stone,Rachel Weisz
+Poor Things|Emma Stone,Mark Ruffalo,Willem Dafoe
+Birdman|Emma Stone,Michael Keaton,Edward Norton
+The Help|Emma Stone,Viola Davis,Octavia Spencer
+Hidden Figures|Taraji P. Henson,Octavia Spencer,Janelle Monáe,Kevin Costner
+The Color Purple|Whoopi Goldberg,Oprah Winfrey,Danny Glover
+Thelma & Louise|Geena Davis,Susan Sarandon,Brad Pitt
+The Curious Case of Benjamin Button|Brad Pitt,Cate Blanchett,Tilda Swinton
+Babel|Brad Pitt,Cate Blanchett,Gael García Bernal
+12 Years a Slave|Chiwetel Ejiofor,Michael Fassbender,Benedict Cumberbatch
+Shame|Michael Fassbender,Carey Mulligan
+Promising Young Woman|Carey Mulligan,Bo Burnham,Alison Brie
+Oppenheimer|Cillian Murphy,Emily Blunt,Robert Downey Jr.,Matt Damon
+The Truman Show|Jim Carrey,Laura Linney,Ed Harris
+Eternal Sunshine of the Spotless Mind|Jim Carrey,Kate Winslet,Mark Ruffalo
+The Big Short|Christian Bale,Steve Carell,Ryan Gosling,Brad Pitt
+Anchorman: The Legend of Ron Burgundy|Will Ferrell,Steve Carell,Paul Rudd
+Little Miss Sunshine|Steve Carell,Paul Dano,Alan Arkin
+There Will Be Blood|Daniel Day-Lewis,Paul Dano
+Lincoln|Daniel Day-Lewis,Sally Field,Tommy Lee Jones
+My Left Foot|Daniel Day-Lewis,Brenda Fricker
+The Revenant|Leonardo DiCaprio,Tom Hardy,Will Poulter
+Mad Max: Fury Road|Tom Hardy,Charlize Theron,Nicholas Hoult
+The Dark Knight Rises|Christian Bale,Tom Hardy,Anne Hathaway,Joseph Gordon-Levitt
+The King's Man|Ralph Fiennes,Harris Dickinson,Djimon Hounsou
+The Menu|Ralph Fiennes,Anya Taylor-Joy,Nicholas Hoult
+The Queen's Gambit|Anya Taylor-Joy,Thomas Brodie-Sangster
+Last Night in Soho|Anya Taylor-Joy,Thomasin McKenzie,Matt Smith
+The Imitation Game|Benedict Cumberbatch,Keira Knightley,Mark Strong
+Doctor Strange|Benedict Cumberbatch,Tilda Swinton,Chiwetel Ejiofor
+The Power of the Dog|Benedict Cumberbatch,Kirsten Dunst,Jesse Plemons
+Spider-Man: Homecoming|Tom Holland,Michael Keaton,Zendaya
+The Greatest Showman|Hugh Jackman,Zac Efron,Michelle Williams
+High School Musical 3: Senior Year|Zac Efron,Vanessa Hudgens,Ashley Tisdale
+The Princess Diaries|Anne Hathaway,Julie Andrews,Mandy Moore
+The Intern|Anne Hathaway,Robert De Niro,Rene Russo
+The Devil Wears Prada 2|Meryl Streep,Anne Hathaway,Emily Blunt
+Mamma Mia!|Meryl Streep,Amanda Seyfried,Pierce Brosnan,Colin Firth
+Les Misérables|Hugh Jackman,Anne Hathaway,Russell Crowe
+The Bourne Identity|Matt Damon,Franka Potente,Chris Cooper
+The Bourne Supremacy|Matt Damon,Franka Potente,Joan Allen
+The Bourne Ultimatum|Matt Damon,Julia Stiles,David Strathairn
+The Talented Mr. Ripley|Matt Damon,Gwyneth Paltrow,Jude Law
+Contagion|Matt Damon,Gwyneth Paltrow,Kate Winslet,Jude Law
+The Holiday|Kate Winslet,Cameron Diaz,Jude Law
+The Mask|Jim Carrey,Cameron Diaz,Peter Riegert
+Gangs of New York|Leonardo DiCaprio,Daniel Day-Lewis,Cameron Diaz
+The Aviator|Leonardo DiCaprio,Cate Blanchett,Kate Beckinsale
+The Great Gatsby|Leonardo DiCaprio,Carey Mulligan,Tobey Maguire
+The Other Boleyn Girl|Natalie Portman,Scarlett Johansson,Eric Bana
+V for Vendetta|Natalie Portman,Hugo Weaving,Stephen Rea
+Black Swan|Natalie Portman,Mila Kunis,Vincent Cassel
+That '70s Show|Ashton Kutcher,Mila Kunis,Topher Grace
+No Country for Old Men|Javier Bardem,Josh Brolin,Tommy Lee Jones
+Sicario|Emily Blunt,Benicio del Toro,Josh Brolin
+Arrival|Amy Adams,Jeremy Renner,Forest Whitaker
+The Bourne Legacy|Jeremy Renner,Rachel Weisz,Edward Norton
+The Mummy|Brendan Fraser,Rachel Weisz,John Hannah
+The Whale|Brendan Fraser,Hong Chau,Sadie Sink
+Everything Everywhere All at Once|Michelle Yeoh,Ke Huy Quan,Jamie Lee Curtis
+Crazy Rich Asians|Michelle Yeoh,Awkwafina,Henry Golding
+The Farewell|Awkwafina,Tzi Ma,Diana Lin
+Shang-Chi and the Legend of the Ten Rings|Awkwafina,Simu Liu,Tony Leung
+The Intouchables|François Cluzet,Omar Sy
+The King's Speech|Colin Firth,Geoffrey Rush,Helena Bonham Carter
+The Shawshank Redemption|Tim Robbins,Morgan Freeman,Bob Gunton
+Sinners|Michael B. Jordan,Hailee Steinfeld,Miles Caton,Jack O’Connell,Wunmi Mosaku,Delroy Lindo
+Creed|Michael B. Jordan,Sylvester Stallone,Tessa Thompson
+Creed II|Michael B. Jordan,Sylvester Stallone,Tessa Thompson,Dolph Lundgren,Wood Harris
+Fruitvale Station|Michael B. Jordan,Octavia Spencer,Melonie Diaz
+Just Mercy|Michael B. Jordan,Jamie Foxx,Brie Larson,Tim Blake Nelson,Rafe Spall
+The Soloist|Robert Downey Jr.,Jamie Foxx,Catherine Keener
+Hamnet|Jessie Buckley,Paul Mescal,Emily Watson,Joe Alwyn,Jacobi Jupe
+The Lost Daughter|Jessie Buckley,Olivia Colman,Dakota Johnson,Peter Sarsgaard,Ed Harris
+Women Talking|Jessie Buckley,Rooney Mara,Claire Foy,Frances McDormand,Ben Whishaw
+I'm Thinking of Ending Things|Jessie Buckley,Jesse Plemons,Toni Collette,David Thewlis
+The Courier|Jessie Buckley,Benedict Cumberbatch,Merab Ninidze
+One Battle After Another|Sean Penn,Leonardo DiCaprio,Benicio del Toro,Regina Hall,Chase Infiniti,Teyana Taylor
+Mystic River|Sean Penn,Tim Robbins,Kevin Bacon,Laurence Fishburne,Marcia Gay Harden
+Milk|Sean Penn,Josh Brolin,James Franco,Emile Hirsch,Diego Luna
+I Am Sam|Sean Penn,Michelle Pfeiffer,Dakota Fanning,Dianne Wiest
+A Real Pain|Kieran Culkin,Jesse Eisenberg,Will Sharpe,Jennifer Grey
+Scott Pilgrim vs. the World|Kieran Culkin,Michael Cera,Mary Elizabeth Winstead,Chris Evans,Brie Larson,Anna Kendrick,Aubrey Plaza,Jason Schwartzman,Brandon Routh
+Anora|Mikey Madison,Mark Eydelshteyn,Yura Borisov,Karren Karagulian
+The Thin Red Line|Adrien Brody,Sean Penn,Matt Damon,Jim Caviezel,Nick Nolte,Elias Koteas,Ben Chaplin,George Clooney,John Cusack,Woody Harrelson,Jared Leto,John C. Reilly,Thomas Jane,Miranda Otto
+Tropic Thunder|Ben Stiller,Robert Downey Jr.,Jack Black,Tom Cruise,Matthew McConaughey,Matt Damon
+Avengers: Infinity War|Robert Downey Jr.,Zoe Saldaña,Chris Pratt,Bradley Cooper,Chris Evans,Mark Ruffalo,Benedict Cumberbatch,Tom Holland,Scarlett Johansson,Chris Hemsworth,Chadwick Boseman
+Avengers: Endgame|Robert Downey Jr.,Zoe Saldaña,Chris Pratt,Bradley Cooper,Chris Evans,Mark Ruffalo,Benedict Cumberbatch,Tom Holland,Scarlett Johansson,Chris Hemsworth,Brie Larson,Paul Rudd
+Thor: Ragnarok|Chris Hemsworth,Tom Hiddleston,Cate Blanchett,Tessa Thompson,Mark Ruffalo,Jeff Goldblum,Matt Damon
+Aloha|Bradley Cooper,Emma Stone,Rachel McAdams,John Krasinski,Danny McBride
+The Monuments Men|George Clooney,Matt Damon,Cate Blanchett,Bill Murray,John Goodman,Jean Dujardin,Hugh Bonneville
+Once Upon a Time in Hollywood|Leonardo DiCaprio,Brad Pitt,Margot Robbie,Mikey Madison`;
+const DATA=[...RAW.trim().split('\n'),...EXTRA.trim().split('\n')];
 const MC={},AM={};
-RAW.trim().split('\n').forEach(l=>{const[t,c]=l.split('|');MC[t]=c.split(',');MC[t].forEach(a=>(AM[a]=AM[a]||[]).push(t))});
+DATA.forEach(l=>{const[t,c]=l.split('|');MC[t]=[...new Set([...(MC[t]||[]),...c.split(',')])];MC[t].forEach(a=>{AM[a]=AM[a]||[];if(!AM[a].includes(t))AM[a].push(t)})});
 const titles=Object.keys(MC).sort(),actors=Object.keys(AM).sort();
 const adj={};
 actors.forEach(a=>{adj[a]=new Set();AM[a].forEach(m=>MC[m].forEach(x=>{if(x!==a)adj[a].add(x)}))});
 function dist(t){const d={[t]:0},q=[t];while(q.length){const c=q.shift();adj[c].forEach(n=>{if(d[n]===undefined){d[n]=d[c]+1;q.push(n)}})}return d}
+function shortestPathCount(a,b){const d={[a]:0},ways={[a]:1},q=[a];while(q.length){const c=q.shift();adj[c].forEach(n=>{if(d[n]===undefined){d[n]=d[c]+1;ways[n]=ways[c];q.push(n)}else if(d[n]===d[c]+1)ways[n]+=ways[c]})}return ways[b]||0}
+const START_POOL=['Matt Damon','Matthew McConaughey','Robert Downey Jr.','Zoe Saldaña','Jessie Buckley'];
+const FINISH_POOL=['Michael B. Jordan','Kieran Culkin','Mikey Madison','Emma Stone','Margot Robbie'];
 const pairs=[];
-actors.forEach(a=>{const d=dist(a);actors.forEach(b=>{if(a<b&&(d[b]===2||d[b]===3))pairs.push([a,b])})});
+START_POOL.forEach(a=>{const d=dist(a);FINISH_POOL.forEach(b=>{if(d[b]>=2&&d[b]<=5&&shortestPathCount(a,b)>1)pairs.push([a,b])})});
 function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 let A,B,cur,D,steps,done,lastM,seen;
-const MAX=10,dd=a=>D[a]===undefined?99:D[a];
-function start(seed){const r=rng(seed),p=pairs[Math.floor(r()*pairs.length)];[A,B]=r()<.5?p:[p[1],p[0]];cur=A;seen=new Set([A]);D=dist(B);steps=[];lastM=null;done=false;msg('');render()}
+const MAX=6,dd=a=>D[a]===undefined?99:D[a];
+const turns=()=>steps.filter(s=>s.t==='a').length;
+function start(seed){const r=rng(seed),p=pairs[Math.floor(r()*pairs.length)];[A,B]=p;cur=A;seen=new Set([A]);D=dist(B);steps=[];lastM=null;done=false;msg('');render()}
 function msg(t){document.getElementById('msg').textContent=t}
 function render(){
  document.getElementById('A').innerHTML=A+'<small>start</small>';
  document.getElementById('B').innerHTML=B+'<small>finish</small>';
  let h='';
- steps.forEach((s,i)=>{h+=`<div class="from">${s.t==='m'?'Movie':'Actor'}</div><div class="row one"><button class="t ${s.c}" data-w="${i}">${s.v}</button></div>${s.show?'<div class="why">'+s.w+'</div>':''}`});
- if(!done&&steps.length<MAX){h+=`<div class="from">Guess ${steps.length+1} of ${MAX}: ${lastM?'pick an actor from <b>'+lastM+'</b>':'pick a movie with <b>'+cur+'</b>'}</div><div class="row one"><button class="t cur" id="pickbtn">Tap to search</button></div>`}
+ steps.forEach(s=>{h+=`<div class="from">${s.t==='m'?'Movie':'Actor'}</div><div class="row one"><div class="t ${s.c}">${s.v}</div></div><div class="why">${s.w}</div>`});
+ if(!done&&turns()<MAX){h+=`<div class="from">Turn ${turns()+1} of ${MAX}: ${lastM?'pick an actor from <b>'+lastM+'</b>':'pick a movie with <b>'+cur+'</b>'}</div><div class="row one"><button class="t cur" id="pickbtn">Tap to search</button></div>`}
  document.getElementById('rows').innerHTML=h;
  const pb=document.getElementById('pickbtn');if(pb)pb.onclick=open;
- document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const s=steps[+b.dataset.w];s.show=!s.show;render()});
- document.getElementById('shareWrap').style.display=(done||steps.length>=MAX)?'flex':'none'}
+ document.getElementById('shareWrap').style.display=(done||turns()>=MAX)?'flex':'none'}
 function open(){const q=document.getElementById('q');q.value='';q.placeholder=lastM?'Search actors…':'Search movies…';fill('');document.getElementById('sheet').classList.add('on');q.focus()}
-function fill(t){const src=lastM?actors.filter(a=>!seen.has(a)):titles,l=document.getElementById('list');
+function fill(t){const src=lastM?MC[lastM].filter(a=>!seen.has(a)):AM[cur],l=document.getElementById('list');
  l.innerHTML='';src.filter(s=>s.toLowerCase().includes(t.toLowerCase())).forEach(s=>{const d=document.createElement('div');d.textContent=s;d.onclick=()=>{document.getElementById('sheet').classList.remove('on');choose(s)};l.appendChild(d)})}
 document.getElementById('q').oninput=e=>fill(e.target.value);
 document.getElementById('sheet').onclick=e=>{if(e.target.id==='sheet')e.target.classList.remove('on')};
@@ -121,17 +254,17 @@ function choose(v){
  let c,t,m='',w='';
  if(!lastM){t='m';const cast=MC[v];
   if(!cast.includes(cur)){c='x';m=v+' doesn’t feature '+cur;w=cur+' isn’t in '+v+'.'}
-  else{c=cast.some(a=>a!==cur&&dd(a)<dd(cur))?'g':'y';w=c==='g'?'Someone in '+v+' is closer to '+B+'.':cur+' is in '+v+', but nobody in it is closer to '+B+'.';lastM=v}
+  else{c='m';w=v+' is a link from '+cur+'.';if(cast.includes(B)){done=true;m='Connected in '+(turns()+1)+' turns!';w+=` It includes ${B}, so you connect automatically.`}else{w+=' Pick an actor from its cast.';lastM=v}}
  }else{t='a';
-  if(!seen.has(v)&&MC[lastM].includes(v)){c=dd(v)<dd(cur)?'g':'y';w=c==='g'?v+' is closer to '+B+' than '+cur+' was.':v+' is in '+lastM+', but no closer to '+B+'.';cur=v;seen.add(v);lastM=null;if(v===B){done=true;m='Connected in '+(steps.length+1)+' guesses!'}}
+  if(!seen.has(v)&&MC[lastM].includes(v)){c=dd(v)<dd(cur)?'g':'y';w=c==='g'?v+' is in '+lastM+' and closer to '+B+' than '+cur+' was.':v+' is in '+lastM+', but is not closer to '+B+' than '+cur+' was.';cur=v;seen.add(v);lastM=null;if(v===B){done=true;m='Connected in '+(turns()+1)+' turns!'}}
   else{c='x';m=v+' isn’t in '+lastM;w=m+'.'}
  }
  steps.push({t,v,c,w});
- if(!done&&steps.length>=MAX)m='Out of guesses';
+ if(!done&&turns()>=MAX)m='Out of turns';
  msg(m);render()}
 document.getElementById('new').onclick=()=>start(Math.floor(Math.random()*1e9));
 document.getElementById('share').onclick=()=>{
- const s='Filmle '+A+' → '+B+'\n'+steps.map(r=>({g:'🟩',y:'🟨',x:'⬛'}[r.c])).join('');
+ const s='Filmle '+A+' → '+B+'\n'+steps.map(r=>({m:'🟦',g:'🟩',y:'🟨',x:'⬛'}[r.c])).join('');
  try{navigator.clipboard.writeText(s);msg('Copied')}catch(e){msg('Copy not available')}};
 start(Math.floor(Date.now()/864e5));
 </script>
