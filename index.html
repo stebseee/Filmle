@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Movie Chain</title>
+<title>Filmle</title>
 <style>
 :root{--bg:#121213;--fg:#fff;--tile:#818384;--empty:#3a3a3c;--g:#538d4e;--y:#b59f3b;--x:#3a3a3c;--panel:#1e1e20;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#fff;--fg:#1a1a1b;--tile:#878a8c;--empty:#d3d6da;--x:#787c7e;--panel:#f2f2f2}}
@@ -131,7 +131,7 @@ function choose(v){
  msg(m);render()}
 document.getElementById('new').onclick=()=>start(Math.floor(Math.random()*1e9));
 document.getElementById('share').onclick=()=>{
- const s='Movie Chain '+A+' → '+B+'\n'+steps.map(r=>({g:'🟩',y:'🟨',x:'⬛'}[r.c])).join('');
+ const s='Filmle '+A+' → '+B+'\n'+steps.map(r=>({g:'🟩',y:'🟨',x:'⬛'}[r.c])).join('');
  try{navigator.clipboard.writeText(s);msg('Copied')}catch(e){msg('Copy not available')}};
 start(Math.floor(Date.now()/864e5));
 </script>
